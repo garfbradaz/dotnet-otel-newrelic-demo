@@ -1,6 +1,12 @@
 # dotnet-otel-newrelic-demo
 Demo on using Open Telemetry with dotnet and New Relic
 
+## Issue Templates
+
+When creating a new issue, you can use one of the following templates:
+
+- **Feature Request**: Use the Feature template when proposing new functionality. This template includes sections for user story and acceptance criteria.
+
 ## About the Project
 
 This application is a demo that illustrates how to use Open Telemetry with dotnet by creating a background service that processes names and assigns genders to them. Data is sent to New Relic for monitoring and telemetry.
