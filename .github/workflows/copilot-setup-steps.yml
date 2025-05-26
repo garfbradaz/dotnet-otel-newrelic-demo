@@ -12,6 +12,9 @@ on:
 jobs:
   configure-environment:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
     steps:
       - name: Set up .NET Core
         uses: actions/setup-dotnet@v3
