@@ -10,43 +10,39 @@ on:
         type: string
 
 jobs:
-  configure-environment:
+  copilot-setup-steps:
     runs-on: ubuntu-latest
     permissions:
       contents: read
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
       - name: Set up .NET Core
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ inputs.dotnet-version || '8.0.x' }}
       
-      # Add nuget.org package source to NuGet config
       - name: Configure NuGet feed
         run: |
           dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org
       
-      # Pre-download common packages to improve performance
       - name: Prepare common dotnet packages
         run: |
           dotnet tool install -g dotnet-reportgenerator-globaltool
       
-      # Configure firewall allowlist
       - name: Configure Firewall
         run: |
           echo "Allow access to nuget.org domains"
-          # NuGet domains
           echo "api.nuget.org" >> $GITHUB_WORKSPACE/.github/copilot-firewall-allowlist
           echo "dc.services.visualstudio.com" >> $GITHUB_WORKSPACE/.github/copilot-firewall-allowlist
           echo "*.nuget.org" >> $GITHUB_WORKSPACE/.github/copilot-firewall-allowlist
-          # Digicert certificate sources
           echo "crl3.digicert.com" >> $GITHUB_WORKSPACE/.github/copilot-firewall-allowlist
           echo "crl4.digicert.com" >> $GITHUB_WORKSPACE/.github/copilot-firewall-allowlist
           echo "ocsp.digicert.com" >> $GITHUB_WORKSPACE/.github/copilot-firewall-allowlist
-          # Symantec certificate sources
           echo "s.symcb.com" >> $GITHUB_WORKSPACE/.github/copilot-firewall-allowlist
           echo "s.symcd.com" >> $GITHUB_WORKSPACE/.github/copilot-firewall-allowlist
           echo "ts-crl.ws.symantec.com" >> $GITHUB_WORKSPACE/.github/copilot-firewall-allowlist
           echo "ts-ocsp.ws.symantec.com" >> $GITHUB_WORKSPACE/.github/copilot-firewall-allowlist
-          # Other package sources
           echo "cdn.fwupd.org" >> $GITHUB_WORKSPACE/.github/copilot-firewall-allowlist
