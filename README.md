@@ -24,6 +24,12 @@ The repository consists of:
 - **NameGenderizer.Service**: A .NET background worker service that monitors a directory for CSV files containing names and processes them to determine genders
 - **NameGenderizer.Tests**: Unit tests for the service components
 
+## Continuous Integration
+
+This project uses GitHub Actions for continuous integration:
+
+- **PR Build and Test**: Automatically builds the solution and runs tests when a pull request is created against the main branch.
+
 ## Getting Started
 
 ### Prerequisites
