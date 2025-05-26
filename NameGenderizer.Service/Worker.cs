@@ -1,4 +1,6 @@
 using System.IO;
+using MediatR;
+using NameGenderizer.Service.Features;
 
 namespace NameGenderizer.Service;
 
@@ -6,14 +8,16 @@ public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
     private readonly IConfiguration _configuration;
+    private readonly IMediator _mediator;
     private FileSystemWatcher? _fileSystemWatcher;
     private string _watchDirectory = string.Empty;
     private const string FileToWatch = "list_of_names.csv";
 
-    public Worker(ILogger<Worker> logger, IConfiguration configuration)
+    public Worker(ILogger<Worker> logger, IConfiguration configuration, IMediator mediator)
     {
         _logger = logger;
         _configuration = configuration;
+        _mediator = mediator;
     }
 
     public override Task StartAsync(CancellationToken cancellationToken)
@@ -76,18 +80,20 @@ public class Worker : BackgroundService
         ProcessFile(e.FullPath);
     }
 
-    private void ProcessFile(string filePath)
+    private async void ProcessFile(string filePath)
     {
         try
         {
             _logger.LogInformation("Processing file: {FilePath}", filePath);
-            // In a real implementation, this would:
-            // 1. Parse the CSV
-            // 2. Call the Name Genderizer API
-            // 3. Write the results to a new CSV with genders
             
-            // For now, just log the detection
-            _logger.LogInformation("File {FilePath} detected and would be processed", filePath);
+            // Add a short delay to ensure file is fully written
+            await Task.Delay(500);
+            
+            // Use the ProcessNamesFile feature to process the file
+            var result = await _mediator.Send(new ProcessNamesFile.Command(filePath));
+            
+            _logger.LogInformation("Processed {Count} names from {FilePath}. Results saved to {OutputPath}",
+                result.ProcessedCount, filePath, result.OutputFilePath);
         }
         catch (Exception ex)
         {

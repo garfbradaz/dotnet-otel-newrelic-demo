@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using MediatR;
 using Moq;
 using NameGenderizer.Service;
 
@@ -12,6 +13,7 @@ public class WorkerTests
     {
         // Arrange
         var loggerMock = new Mock<ILogger<Worker>>();
+        var mediatorMock = new Mock<IMediator>();
         
         // Create a configuration with test settings
         var testDir = Path.Combine(Path.GetTempPath(), "test_watchdir");
@@ -30,7 +32,7 @@ public class WorkerTests
             .AddInMemoryCollection(inMemorySettings)
             .Build();
         
-        var worker = new Worker(loggerMock.Object, configuration);
+        var worker = new Worker(loggerMock.Object, configuration, mediatorMock.Object);
         
         try
         {
