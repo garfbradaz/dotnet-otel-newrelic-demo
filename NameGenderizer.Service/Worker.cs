@@ -1,4 +1,4 @@
-using System.IO;
+using NameGenderizer.Service.Services;
 
 namespace NameGenderizer.Service;
 
@@ -6,14 +6,19 @@ public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
     private readonly IConfiguration _configuration;
+    private readonly INameApiClient _nameApiClient;
+    private readonly ICsvService _csvService;
     private FileSystemWatcher? _fileSystemWatcher;
     private string _watchDirectory = string.Empty;
     private const string FileToWatch = "list_of_names.csv";
+    private const string OutputFileName = "list_of_names_with_gender.csv";
 
-    public Worker(ILogger<Worker> logger, IConfiguration configuration)
+    public Worker(ILogger<Worker> logger, IConfiguration configuration, INameApiClient nameApiClient, ICsvService csvService)
     {
         _logger = logger;
         _configuration = configuration;
+        _nameApiClient = nameApiClient;
+        _csvService = csvService;
     }
 
     public override Task StartAsync(CancellationToken cancellationToken)
@@ -68,26 +73,54 @@ public class Worker : BackgroundService
 
     private void OnFileCreated(object sender, FileSystemEventArgs e)
     {
-        ProcessFile(e.FullPath);
+        ProcessFileAsync(e.FullPath, CancellationToken.None).GetAwaiter().GetResult();
     }
 
     private void OnFileChanged(object sender, FileSystemEventArgs e)
     {
-        ProcessFile(e.FullPath);
+        ProcessFileAsync(e.FullPath, CancellationToken.None).GetAwaiter().GetResult();
     }
 
-    private void ProcessFile(string filePath)
+    private async Task ProcessFileAsync(string filePath, CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogInformation("Processing file: {FilePath}", filePath);
-            // In a real implementation, this would:
-            // 1. Parse the CSV
-            // 2. Call the Name Genderizer API
-            // 3. Write the results to a new CSV with genders
             
-            // For now, just log the detection
-            _logger.LogInformation("File {FilePath} detected and would be processed", filePath);
+            // 1. Parse the CSV
+            var people = await _csvService.ReadCsvAsync(filePath, cancellationToken);
+            
+            // 2. Call the Name Genderizer API for each person
+            foreach (var person in people)
+            {
+                try
+                {
+                    var response = await _nameApiClient.GetGenderAsync(
+                        person.FirstName.Trim(), 
+                        person.LastName.Trim(), 
+                        cancellationToken);
+                    
+                    person.Gender = response.Gender.ToLowerInvariant() switch
+                    {
+                        "male" => "male",
+                        "female" => "female",
+                        _ => "unknown"
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error getting gender for {FirstName} {LastName}", 
+                        person.FirstName, person.LastName);
+                    person.Gender = "unknown";
+                }
+            }
+            
+            // 3. Write the results to a new CSV with genders
+            var outputPath = Path.Combine(Path.GetDirectoryName(filePath)!, OutputFileName);
+            await _csvService.WriteCsvAsync(outputPath, people, cancellationToken);
+            
+            _logger.LogInformation("File {FilePath} processed successfully. Output saved to {OutputPath}", 
+                filePath, outputPath);
         }
         catch (Exception ex)
         {

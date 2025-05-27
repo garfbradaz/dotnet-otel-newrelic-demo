@@ -2,6 +2,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NameGenderizer.Service;
+using NameGenderizer.Service.Services;
+using NSubstitute;
 
 namespace NameGenderizer.Tests;
 
@@ -30,7 +32,10 @@ public class WorkerTests
             .AddInMemoryCollection(inMemorySettings)
             .Build();
         
-        var worker = new Worker(loggerMock.Object, configuration);
+        var nameApiClient = Substitute.For<INameApiClient>();
+        var csvService = Substitute.For<ICsvService>();
+        
+        var worker = new Worker(loggerMock.Object, configuration, nameApiClient, csvService);
         
         try
         {
