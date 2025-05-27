@@ -4,8 +4,8 @@ on:
   workflow_call:
     inputs:
       dotnet-version:
-        description: '.NET SDK version to use'
-        default: '8.0.x'
+        description: ".NET SDK version to use"
+        default: "8.0.x"
         required: false
         type: string
 
@@ -26,7 +26,11 @@ jobs:
       
       - name: Configure NuGet feed
         run: |
-          dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org
+          if ! dotnet nuget list source | grep -q "nuget.org"; then
+            dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org
+          else
+            echo "NuGet.org source already exists, skipping..."
+          fi
       
       - name: Prepare common dotnet packages
         run: |
