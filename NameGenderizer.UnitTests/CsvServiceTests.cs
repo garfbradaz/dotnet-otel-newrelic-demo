@@ -5,7 +5,7 @@ using NSubstitute;
 using System.IO;
 using System.Text.RegularExpressions;
 
-namespace NameGenderizer.Tests;
+namespace NameGenderizer.UnitTests;
 
 public class CsvServiceTests
 {

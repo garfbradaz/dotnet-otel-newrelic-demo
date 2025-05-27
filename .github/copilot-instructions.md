@@ -27,3 +27,4 @@ Casey, Bradley, female
 - Always write unit tests to validate logic
 - Tests should be written in Xunit
 - The application should feature driven vertical slicing using Meditar. One feature per handler, and chain them where appropriate
+- Keep Unit tests and Integration tests in separate projects (NameGenderizer.UnitTests and NameGenderizer.IntegrationTests)

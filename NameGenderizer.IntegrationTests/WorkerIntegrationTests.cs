@@ -6,7 +6,7 @@ using NameGenderizer.Service.Services;
 using NSubstitute;
 using System.Text.RegularExpressions;
 
-namespace NameGenderizer.Tests;
+namespace NameGenderizer.IntegrationTests;
 
 public class WorkerIntegrationTests
 {

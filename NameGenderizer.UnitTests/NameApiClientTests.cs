@@ -4,7 +4,7 @@ using NSubstitute;
 using NameGenderizer.Service.Services;
 using NameGenderizer.Service.Models;
 
-namespace NameGenderizer.Tests;
+namespace NameGenderizer.UnitTests;
 
 public class NameApiClientTests
 {
