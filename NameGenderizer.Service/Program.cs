@@ -1,4 +1,5 @@
 using NameGenderizer.Service;
+using NameGenderizer.Service.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -8,6 +9,8 @@ builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.Environment
 builder.Configuration.AddEnvironmentVariables();
 
 // Add services
+builder.Services.AddHttpClient<INameApiClient, NameApiClient>();
+builder.Services.AddScoped<ICsvService, CsvService>();
 builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();
