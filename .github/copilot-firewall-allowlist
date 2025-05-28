@@ -41,3 +41,14 @@ s.symcd.com
 ts-crl.ws.symantec.com
 ts-ocsp.ws.symantec.com
 cdn.fwupd.org
+api.nuget.org
+dc.services.visualstudio.com
+*.nuget.org
+crl3.digicert.com
+crl4.digicert.com
+ocsp.digicert.com
+s.symcb.com
+s.symcd.com
+ts-crl.ws.symantec.com
+ts-ocsp.ws.symantec.com
+cdn.fwupd.org

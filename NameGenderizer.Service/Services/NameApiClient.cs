@@ -67,15 +67,22 @@ public class NameApiClient : INameApiClient
 
     private async Task<NameApiResponse> DeserializeResponseAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-        var nameApiResponse = JsonSerializer.Deserialize<NameApiResponse>(responseContent);
+        try
+        {
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var nameApiResponse = JsonSerializer.Deserialize<NameApiResponse>(responseContent);
 
-        if (nameApiResponse == null)
+            if (nameApiResponse == null)
+            {
+                throw new JsonException("API returned null response after deserialization");
+            }
+
+            return nameApiResponse;
+        }
+        catch (Exception)
         {
             _logger.LogDeserializeError();
-            throw new InvalidOperationException("Failed to deserialize API response");
+            throw; // This preserves the original stack trace
         }
-
-        return nameApiResponse;
     }
 }
