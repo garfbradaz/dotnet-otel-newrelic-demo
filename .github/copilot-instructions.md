@@ -28,3 +28,4 @@ Casey, Bradley, female
 - Tests should be written in Xunit
 - The application should feature driven vertical slicing using Meditar. One feature per handler, and chain them where appropriate
 - Keep Unit tests and Integration tests in separate projects (NameGenderizer.UnitTests and NameGenderizer.IntegrationTests)
+- Use the compile-time logging pattern with LoggerMessage.Define and keep them in extension files as documented here: https://learn.microsoft.com/en-us/dotnet/core/extensions/logger-message-generator

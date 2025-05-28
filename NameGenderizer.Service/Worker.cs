@@ -1,4 +1,6 @@
 using NameGenderizer.Service.Services;
+using NameGenderizer.Service.Extensions;
+using NameGenderizer.Service.Models;
 
 namespace NameGenderizer.Service;
 
@@ -25,23 +27,46 @@ public class Worker : BackgroundService
     {
         _watchDirectory = _configuration.GetValue<string>("WatchSettings:Directory") ?? Path.Combine(Directory.GetCurrentDirectory(), "watchdir");
         
-        _logger.LogInformation("Starting service. Watching directory: {Directory}", _watchDirectory);
+        _logger.LogStartingService(_watchDirectory);
         
-        // Ensure the directory exists
-        if (!Directory.Exists(_watchDirectory))
-        {
-            Directory.CreateDirectory(_watchDirectory);
-            _logger.LogInformation("Created watch directory: {Directory}", _watchDirectory);
-        }
+        EnsureWatchDirectoryExists();
 
         return base.StartAsync(cancellationToken);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Worker started at: {time}", DateTimeOffset.Now);
+        _logger.LogWorkerStarted(DateTimeOffset.Now);
 
-        // Set up file watcher
+        SetupFileWatcher();
+
+        // Keep the service alive
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            await Task.Delay(5000, stoppingToken);
+        }
+    }
+
+    public override Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogStoppingService();
+        
+        _fileSystemWatcher?.Dispose();
+        
+        return base.StopAsync(cancellationToken);
+    }
+
+    private void EnsureWatchDirectoryExists()
+    {
+        if (!Directory.Exists(_watchDirectory))
+        {
+            Directory.CreateDirectory(_watchDirectory);
+            _logger.LogCreatedWatchDirectory(_watchDirectory);
+        }
+    }
+
+    private void SetupFileWatcher()
+    {
         _fileSystemWatcher = new FileSystemWatcher
         {
             Path = _watchDirectory,
@@ -53,22 +78,7 @@ public class Worker : BackgroundService
         _fileSystemWatcher.Changed += OnFileChanged;
         _fileSystemWatcher.EnableRaisingEvents = true;
 
-        _logger.LogInformation("File watcher set up for {FileName} in {Directory}", FileToWatch, _watchDirectory);
-
-        // Keep the service alive
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            await Task.Delay(5000, stoppingToken);
-        }
-    }
-
-    public override Task StopAsync(CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Stopping service");
-        
-        _fileSystemWatcher?.Dispose();
-        
-        return base.StopAsync(cancellationToken);
+        _logger.LogFileWatcherSetup(FileToWatch, _watchDirectory);
     }
 
     private void OnFileCreated(object sender, FileSystemEventArgs e)
@@ -85,46 +95,59 @@ public class Worker : BackgroundService
     {
         try
         {
-            _logger.LogInformation("Processing file: {FilePath}", filePath);
+            _logger.LogProcessingFile(filePath);
             
-            // 1. Parse the CSV
-            var people = await _csvService.ReadCsvAsync(filePath, cancellationToken);
-            
-            // 2. Call the Name Genderizer API for each person
-            foreach (var person in people)
-            {
-                try
-                {
-                    var response = await _nameApiClient.GetGenderAsync(
-                        person.FirstName.Trim(), 
-                        person.LastName.Trim(), 
-                        cancellationToken);
-                    
-                    person.Gender = response.Gender.ToLowerInvariant() switch
-                    {
-                        "male" => "male",
-                        "female" => "female",
-                        _ => "unknown"
-                    };
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error getting gender for {FirstName} {LastName}", 
-                        person.FirstName, person.LastName);
-                    person.Gender = "unknown";
-                }
-            }
-            
-            // 3. Write the results to a new CSV with genders
-            var outputPath = Path.Combine(Path.GetDirectoryName(filePath)!, OutputFileName);
-            await _csvService.WriteCsvAsync(outputPath, people, cancellationToken);
-            
-            _logger.LogInformation("File {FilePath} processed successfully. Output saved to {OutputPath}", 
-                filePath, outputPath);
+            var people = await ReadCsvFileAsync(filePath, cancellationToken);
+            await EnrichPeopleWithGenderAsync(people, cancellationToken);
+            await WriteCsvResultsAsync(filePath, people, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing file {FilePath}", filePath);
+            _logger.LogProcessingFileError(ex, filePath);
         }
+    }
+
+    private async Task<List<Person>> ReadCsvFileAsync(string filePath, CancellationToken cancellationToken)
+    {
+        return await _csvService.ReadCsvAsync(filePath, cancellationToken);
+    }
+
+    private async Task EnrichPeopleWithGenderAsync(List<Person> people, CancellationToken cancellationToken)
+    {
+        foreach (var person in people)
+        {
+            try
+            {
+                var response = await _nameApiClient.GetGenderAsync(
+                    person.FirstName.Trim(), 
+                    person.LastName.Trim(), 
+                    cancellationToken);
+                
+                person.Gender = MapGenderResponse(response.Gender);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogGettingGenderError(ex, person.FirstName, person.LastName);
+                person.Gender = "unknown";
+            }
+        }
+    }
+
+    private string MapGenderResponse(string apiGender)
+    {
+        return apiGender.ToLowerInvariant() switch
+        {
+            "male" => "male",
+            "female" => "female",
+            _ => "unknown"
+        };
+    }
+
+    private async Task WriteCsvResultsAsync(string inputFilePath, List<Person> people, CancellationToken cancellationToken)
+    {
+        var outputPath = Path.Combine(Path.GetDirectoryName(inputFilePath)!, OutputFileName);
+        await _csvService.WriteCsvAsync(outputPath, people, cancellationToken);
+        
+        _logger.LogFileProcessedSuccessfully(inputFilePath, outputPath);
     }
 }

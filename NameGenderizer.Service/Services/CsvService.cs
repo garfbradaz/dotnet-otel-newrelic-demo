@@ -19,7 +19,7 @@ public class CsvService : ICsvService
     {
         try
         {
-            _logger.LogInformation("Reading CSV file: {FilePath}", filePath);
+            _logger.LogReadingCsvFile(filePath);
             
             using var reader = new StreamReader(filePath);
             using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
@@ -30,12 +30,12 @@ public class CsvService : ICsvService
             
             var records = await csv.GetRecordsAsync<Person>(cancellationToken).ToListAsync(cancellationToken);
             
-            _logger.LogInformation("Read {Count} records from CSV file", records.Count);
+            _logger.LogReadCsvRecordsCount(records.Count);
             return records;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error reading CSV file: {FilePath}", filePath);
+            _logger.LogReadCsvError(ex, filePath);
             throw;
         }
     }
@@ -44,18 +44,18 @@ public class CsvService : ICsvService
     {
         try
         {
-            _logger.LogInformation("Writing {Count} records to CSV file: {FilePath}", people.Count, filePath);
+            _logger.LogWritingCsvFile(people.Count, filePath);
             
             using var writer = new StreamWriter(filePath);
             using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
             
             await csv.WriteRecordsAsync(people, cancellationToken);
             
-            _logger.LogInformation("Successfully wrote records to CSV file");
+            _logger.LogWroteCsvFile();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error writing CSV file: {FilePath}", filePath);
+            _logger.LogWriteCsvError(ex, filePath);
             throw;
         }
     }

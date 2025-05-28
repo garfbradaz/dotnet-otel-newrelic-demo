@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using NameGenderizer.Service.Models;
+using NameGenderizer.Service.Extensions;
 
 namespace NameGenderizer.Service.Services;
 
@@ -22,44 +23,59 @@ public class NameApiClient : INameApiClient
     {
         try
         {
-            var request = new NameApiRequest
-            {
-                InputPerson = new InputPerson
-                {
-                    PersonName = new PersonName
-                    {
-                        NameFields = new List<NameField>
-                        {
-                            new() { String = firstName, FieldType = "GIVENNAME" },
-                            new() { String = lastName, FieldType = "SURNAME" }
-                        }
-                    }
-                }
-            };
-
-            var requestJson = JsonSerializer.Serialize(request);
-            var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
-
-            var url = $"{_apiBaseUrl}?apiKey={_apiKey}";
-            var response = await _httpClient.PostAsync(url, content, cancellationToken);
-
-            response.EnsureSuccessStatusCode();
-
-            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            var nameApiResponse = JsonSerializer.Deserialize<NameApiResponse>(responseContent);
-
-            if (nameApiResponse == null)
-            {
-                _logger.LogError("Failed to deserialize API response");
-                throw new InvalidOperationException("Failed to deserialize API response");
-            }
-
-            return nameApiResponse;
+            var request = CreateNameApiRequest(firstName, lastName);
+            var content = SerializeRequest(request);
+            var response = await SendApiRequestAsync(content, cancellationToken);
+            return await DeserializeResponseAsync(response, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calling Name API for {FirstName} {LastName}", firstName, lastName);
+            _logger.LogNameApiError(ex, firstName, lastName);
             throw;
         }
+    }
+
+    private NameApiRequest CreateNameApiRequest(string firstName, string lastName)
+    {
+        return new NameApiRequest(
+            new Context("REALTIME", new List<object>()),
+            new InputPerson(
+                "NaturalInputPerson",
+                new PersonName(new List<NameField>
+                {
+                    new NameField(firstName, "GIVENNAME"),
+                    new NameField(lastName, "SURNAME")
+                }),
+                "UNKNOWN"
+            )
+        );
+    }
+
+    private StringContent SerializeRequest(NameApiRequest request)
+    {
+        var requestJson = JsonSerializer.Serialize(request);
+        return new StringContent(requestJson, Encoding.UTF8, "application/json");
+    }
+
+    private async Task<HttpResponseMessage> SendApiRequestAsync(StringContent content, CancellationToken cancellationToken)
+    {
+        var url = $"{_apiBaseUrl}?apiKey={_apiKey}";
+        var response = await _httpClient.PostAsync(url, content, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return response;
+    }
+
+    private async Task<NameApiResponse> DeserializeResponseAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+        var nameApiResponse = JsonSerializer.Deserialize<NameApiResponse>(responseContent);
+
+        if (nameApiResponse == null)
+        {
+            _logger.LogDeserializeError();
+            throw new InvalidOperationException("Failed to deserialize API response");
+        }
+
+        return nameApiResponse;
     }
 }
